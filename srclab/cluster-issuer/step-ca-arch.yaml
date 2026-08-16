@@ -1,0 +1,24 @@
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: step-ca-arch
+spec:
+  acme:
+    server: https://arch.srclab.internal:8443/acme/acme/directory
+    email: sayon87@gmail.com  
+    privateKeySecretRef:
+      name: step-ca-acme-account-key
+    caBundle: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUJ5VENDQVc2Z0F3SUJBZ0lSQUtDUUszRHBYUXJoZjBpdjA1MmxBUzR3Q2dZSUtvWkl6ajBFQXdJd1FqRWIKTUJrR0ExVUVDaE1TVTFKRFRHRmlJRWx1ZEdWeWJtRnNJRU5CTVNNd0lRWURWUVFERXhwVFVrTk1ZV0lnU1c1MApaWEp1WVd3Z1EwRWdVbTl2ZENCRFFUQWVGdzB5TmpBM01UY3hPREExTVRaYUZ3MHpOakEzTVRReE9EQTFNVFphCk1FSXhHekFaQmdOVkJBb1RFbE5TUTB4aFlpQkpiblJsY201aGJDQkRRVEVqTUNFR0ExVUVBeE1hVTFKRFRHRmkKSUVsdWRHVnlibUZzSUVOQklGSnZiM1FnUTBFd1dUQVRCZ2NxaGtqT1BRSUJCZ2dxaGtqT1BRTUJCd05DQUFTVQpWYTBLYVpsMy80aG42QUU1MWc0bnU2dkRkM2QvTzY2TzZtZnN0QmppODJySzJucTRqaDNWK3UyVTFvZXN1TS9ECng0YSthcHk3YkJXZjVoMVFERWxTbzBVd1F6QU9CZ05WSFE4QkFmOEVCQU1DQVFZd0VnWURWUjBUQVFIL0JBZ3cKQmdFQi93SUJBVEFkQmdOVkhRNEVGZ1FVTEpIWXFlaXh0bzAybjhpWjJ2dE56RUZkZWFRd0NnWUlLb1pJemowRQpBd0lEU1FBd1JnSWhBT1hMWkR3Q3VERVFleEZEc0djNzY2K3F3VVF3bStOTnU1dWtDbWkwUW1JWEFpRUE5WnpPCmZWdVdXTVA1NEdKUVFmMzVmS0hjYmZGTU1DM3RZdnpTcVhKeE12QT0KLS0tLS1FTkQgQ0VSVElGSUNBVEUtLS0tLQo=
+    solvers:
+    - dns01:
+        rfc2136:
+          nameserver: 192.168.122.1:53
+          tsigKeyName: cert-manager-key
+          tsigAlgorithm: HMACSHA256
+          tsigSecretSecretRef:
+            name: bind-tsig-secret
+            key: tsig-secret
+      selector:
+        dnsZones:
+        - srclab.internal
+    
