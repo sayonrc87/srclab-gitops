@@ -3,5 +3,4 @@ kind: Kustomization
 namespace: cert-manager
 resources:
 - ../../base/cert-manager
-# patches:
-# - path: patches/release.yaml
+- step-ca-root-crt.yaml
