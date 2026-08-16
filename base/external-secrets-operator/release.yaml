@@ -1,0 +1,19 @@
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: external-sop
+spec:
+  interval: 30m
+  chart:
+    spec:
+      # https://artifacthub.io/packages/helm/external-secrets-operator/external-secrets
+      chart: external-secrets
+      version: "2.9.0"
+      sourceRef:
+        kind: HelmRepository
+        name: external-sop
+        namespace: cloudtools
+  values:
+    serviceAccount:
+      create: true
+      name: external-secrets

@@ -1,0 +1,104 @@
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: prometheus
+spec:
+  releaseName: prometheus
+  interval: 5m
+  chart: 
+    # https://github.com/prometheus-community/helm-charts/tree/main/charts/kube-prometheus-stack
+    spec:
+      chart: kube-prometheus-stack
+      sourceRef:
+        kind: HelmRepository
+        name: prometheus
+        namespace: monitoring
+      version: "84.1.0"
+  install:
+    crds: CreateReplace
+  upgrade:
+    crds: CreateReplace
+  values:
+    namespaceOverride: "monitoring"
+    nameOverride: "prometheus-stack"
+    fullnameOverride: "prometheus-stack"
+    grafana:
+      enabled: false
+    alertmanager:
+      enabled: false
+    kubeStateMetrics:
+      enabled: true
+    kube-state-metrics:
+      namespaceOverride: monitoring
+    kubeScheduler:
+      enabled: false
+    kubeControllerManager:
+      enabled: false
+    kubeEtcd:
+      enabled: false
+    defaultRules:
+      rules:
+        windows: false
+        etcd: false
+        kubeControllerManager: false
+        kubeSchedulerAlerting: false
+        kubeSchedulerRecording: false
+    prometheus:
+      prometheusSpec:
+        enableRemoteWriteReceiver: true
+    prometheus-node-exporter:
+      namespaceOverride: monitoring
+      extraArgs:
+      - --collector.filesystem.mount-points-exclude=^/(dev|proc|sys|var/lib/docker/.+|var/lib/kubelet/.+)($|/)
+      - --collector.filesystem.fs-types-exclude=^(autofs|binfmt_misc|bpf|cgroup2?|configfs|debugfs|devpts|devtmpfs|fusectl|hugetlbfs|iso9660|mqueue|nsfs|overlay|proc|procfs|pstore|rpc_pipefs|securityfs|selinuxfs|squashfs|sysfs|tracefs|erofs)$
+      - --log.format=json
+      prometheus:
+        monitor:
+          relabelings:
+          - sourceLabels: [__meta_kubernetes_pod_node_name]
+            separator: ;
+            regex: ^(.*)$
+            targetLabel: node
+            replacement: $1
+            action: replace
+    additionalPrometheusRulesMap:
+      custom-node-rules:
+        groups:
+        - name: node-rules
+          rules:
+          - alert: NodeGroupTooManyPods
+            annotations:
+              description: 'Node group {{ $labels.label_dedicated }} has too many pods.'
+              summary: Too Many pods in node group
+            expr: sum by (label_dedicated) (sum by (node) ((kube_pod_status_phase{job="kube-state-metrics",phase="Running"} == 1) * on (uid) group_left(node) kube_pod_info) * on (node) group_right() kube_node_labels) / sum by (label_dedicated) (kube_node_status_capacity{job="kube-state-metrics",resource="pods"} * on (node) group_right() kube_node_labels) > 0.85
+            for: 15m
+            labels:
+              severity: warning
+      app-pod-rules:
+        groups:
+        - name: app-pod.rules
+          rules:
+          - alert: PodRestarts
+            expr: sum(changes(kube_pod_container_status_restarts_total[10m])) by (container, container_name, endpoint, instance,job, name, namespace, pod, pod_name, service) > 3
+            annotations:
+              description: Pod {{ $labels.pod}} in namespace {{ $labels.namespace }} too many restarts.
+              summary: Pod {{ $labels.pod}} in namespace {{ $labels.namespace }} too many restarts.
+            for: 1m
+            labels:
+              severity: warning
+          - alert: PodOOMKilled
+            expr: sum_over_time (kube_pod_container_status_terminated_reason{reason="OOMKilled"} [5m]) > 0
+            annotations:
+              summary: "Pod '{{ $labels.pod }}' in namespace {{ $labels.namespace }} is terminated with OOM."
+              description: "Pod '{{ $labels.pod }}' in namespace {{ $labels.namespace }} is terminated with OOM."
+            for: 1m
+            labels:
+              severity: warning
+          - alert: ContainerMemoryLimits
+            expr: sum(avg_over_time(container_memory_rss{container_name!="POD"}[5m])) by (pod,container,namespace) / sum(kube_pod_container_resource_limits{container_name!="POD"}) by(pod,container,namespace) * 100 > 90
+            annotations:
+              summary: "Container '{{ $labels.pod }}/{{ $labels.container }}' in namespace {{ $labels.namespace }} using more that 90% of the memory defined by the limits."
+              description: "Container '{{ $labels.pod }}/{{ $labels.container }}' in namespace {{ $labels.namespace }} using more that 90% of the memory defined by the limits."
+            for: 1m
+            labels:
+              severity: warning
