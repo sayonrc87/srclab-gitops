@@ -3,5 +3,6 @@ kind: Kustomization
 namespace: metallb-system
 resources:
 - ../../base/metallb
+- ipaddresspool.yaml
 # patches:
 # - path: patches/release.yaml
